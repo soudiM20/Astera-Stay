@@ -1,5 +1,5 @@
 const Listing = require("../models/listing.js");
-const ExpressError = require("../utils/ExpressError.js");
+const ExpressError = require("../utils/expressError.js");
 const axios = require("axios");
 let mapToken = process.env.MAP_TOKEN;
 

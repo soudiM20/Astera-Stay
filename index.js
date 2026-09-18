@@ -26,7 +26,7 @@ const methodOverride = require("method-override");
 //EJS MATE -> to apply boiler plate styling across diff ejs files
 const ejsMate = require("ejs-mate");
 //ERROR HANDLER REQUIRED
-const ExpressError = require("./utils/ExpressError.js");
+const ExpressError = require("./utils/expressError.js");
 //ROUTES
 const listingRoute = require("./routes/listing.js");
 const reviewRoute = require("./routes/review.js");
