@@ -1,11 +1,25 @@
 //USING DOTENV FOR ACCESSING OUR CLOUD CREDENTIALS
 if (process.env.NODE_ENV != "production") {
-    require("dotenv").config();
+  require("dotenv").config();
 }
 
 //requiring all the needed modules
 const express = require("express");
 const app = express();
+
+// Trust Render's reverse proxy in production
+if (process.env.NODE_ENV === "production") {
+  app.set("trust proxy", 1);
+}
+
+// Health check route for deployment
+app.get("/health", (req, res) => {
+  res.status(200).json({
+    status: "ok",
+    service: "Astera Stay",
+  });
+});
+
 const mongoose = require("mongoose");
 const path = require("path");
 const methodOverride = require("method-override");
@@ -30,12 +44,23 @@ const User = require("./models/user.js");
 
 //FAIL FAST IF REQUIRED ENV VARS ARE MISSING (this is almost certainly why the app has been crashing:
 //the project's .env file was found empty, so ATLAS_URL/SECRET/CLOUD_*/MAP_TOKEN were all undefined)
-const REQUIRED_ENV_VARS = ["ATLAS_URL", "SECRET", "CLOUD_NAME", "CLOUD_API_KEY", "CLOUD_API_SECRET", "MAP_TOKEN"];
+const REQUIRED_ENV_VARS = [
+  "ATLAS_URL",
+  "SECRET",
+  "CLOUD_NAME",
+  "CLOUD_API_KEY",
+  "CLOUD_API_SECRET",
+  "MAP_TOKEN",
+];
 const missingEnvVars = REQUIRED_ENV_VARS.filter((key) => !process.env[key]);
 if (missingEnvVars.length) {
-    console.error(`Missing required environment variable(s): ${missingEnvVars.join(", ")}`);
-    console.error("Add them to your .env file (see .env.example) before starting the server.");
-    process.exit(1);
+  console.error(
+    `Missing required environment variable(s): ${missingEnvVars.join(", ")}`,
+  );
+  console.error(
+    "Add them to your .env file (see .env.example) before starting the server.",
+  );
+  process.exit(1);
 }
 
 const atlasURL = process.env.ATLAS_URL;
@@ -43,29 +68,30 @@ const PORT = process.env.PORT || 8080;
 
 //SETTING UP THE MONGO SESSION STORE
 const store = MongoStore.create({
-    mongoUrl: atlasURL,
-    crypto: {
-        secret: process.env.SECRET,
-    },
-    touchAfter: 24 * 3600, // time period in seconds
+  mongoUrl: atlasURL,
+  crypto: {
+    secret: process.env.SECRET,
+  },
+  touchAfter: 24 * 3600, // time period in seconds
 });
 //error handler for mongostore (previously referenced an undefined `err`, which throws as soon as
 //this fires - now correctly receives the error from the event)
 store.on("error", (err) => {
-    console.log("Session store error: ", err);
+  console.log("Session store error: ", err);
 });
 
 // SETTING UP EXPRESS SESSION MIDDLEWARE
 const sessionOptions = {
-    store: store, //for maintaining session we use mongo atlas
-    secret: process.env.SECRET,
-    resave: false,
-    saveUninitialized: true,
-    cookie: {
-        expires: Date.now() + 7 * 24 * 60 * 60 * 1000,
-        maxAge: 7 * 24 * 60 * 60 * 1000,
-        httpOnly: true,
-    },
+  store: store, //for maintaining session we use mongo atlas
+  secret: process.env.SECRET,
+  resave: false,
+  saveUninitialized: true,
+  cookie: {
+    expires: Date.now() + 7 * 24 * 60 * 60 * 1000,
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+  },
 };
 
 //setting up the required modules
@@ -90,11 +116,11 @@ passport.deserializeUser(User.deserializeUser());
 app.use(flash());
 
 app.use((req, res, next) => {
-    res.locals.succMsg = req.flash("success");
-    res.locals.errMsg = req.flash("error");
-    //should be defined after the passport definition -> as req.user is maintained by passport
-    res.locals.currUser = req.user || null;
-    next();
+  res.locals.succMsg = req.flash("success");
+  res.locals.errMsg = req.flash("error");
+  //should be defined after the passport definition -> as req.user is maintained by passport
+  res.locals.currUser = req.user || null;
+  next();
 });
 
 //SETTING EXPRESS ROUTES -> route shifting
@@ -104,31 +130,31 @@ app.use("/", userRoute);
 
 //404 HANDLER -> anything that fell through every route above lands here
 app.all("*", (req, res, next) => {
-    next(new ExpressError(404, "Page Not Found"));
+  next(new ExpressError(404, "Page Not Found"));
 });
 
 //CENTRALIZED ERROR HANDLER
 app.use((err, req, res, next) => {
-    let { status = 500, message = "Something went wrong" } = err;
-    if (!err.message) err.message = message;
-    res.status(status).render("error.ejs", { err });
+  let { status = 500, message = "Something went wrong" } = err;
+  if (!err.message) err.message = message;
+  res.status(status).render("error.ejs", { err });
 });
 
 //CONNECT TO THE DATABASE FIRST, ONLY START LISTENING ONCE IT SUCCEEDS.
 //Previously app.listen() ran unconditionally and immediately, regardless of whether Mongo
 //ever connected, so the server would appear "up" while every DB-backed route failed.
 async function main() {
-    await mongoose.connect(atlasURL);
+  await mongoose.connect(atlasURL);
 }
 
 main()
-    .then(() => {
-        console.log("Database is connected successfully");
-        app.listen(PORT, () => {
-            console.log(`Server is listening on port ${PORT}`);
-        });
-    })
-    .catch((err) => {
-        console.error("Database connection error: ", err);
-        process.exit(1);
+  .then(() => {
+    console.log("Database is connected successfully");
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`Server is listening on port ${PORT}`);
     });
+  })
+  .catch((err) => {
+    console.error("Database connection error: ", err);
+    process.exit(1);
+  });
