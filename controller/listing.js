@@ -1,15 +1,16 @@
 const Listing = require("../models/listing.js");
 const ExpressError = require("../utils/expressError.js");
 const axios = require("axios");
+const { cloudinary } = require("../cloudConfig.js");
 let mapToken = process.env.MAP_TOKEN;
 
 module.exports.showIndex = async (req, res) => {
     const listings = await Listing.find();
-    res.render("Listings/index.ejs", { listings });
+    res.render("listings/index.ejs", { listings });
 };
 
 module.exports.serveNewForm = (req, res) => {
-    res.render("Listings/new.ejs");
+    res.render("listings/new.ejs");
 };
 
 module.exports.saveNewListing = async (req, res, next) => {
@@ -29,7 +30,7 @@ module.exports.saveNewListing = async (req, res, next) => {
 
     let geometry;
     try {
-        const response = await axios.get(mapUrl);
+        const response = await axios.get(mapUrl, { timeout: 10000 });
         const feature = response.data.features && response.data.features[0];
         if (!feature) {
             req.flash("error", "Could not locate that place. Please check the location/country.");
@@ -54,12 +55,14 @@ module.exports.saveNewListing = async (req, res, next) => {
 
 module.exports.showListing = async (req, res) => {
     let { id } = req.params;
-    const listing = await Listing.findById(id).populate({ path: "reviews" }).populate("owner");
+    const listing = await Listing.findById(id)
+        .populate({ path: "reviews", populate: { path: "author" } })
+        .populate("owner");
     if (!listing) {
         req.flash("error", "The listing doesn't exist");
         return res.redirect("/listings");
     }
-    res.render("Listings/show.ejs", { listing });
+    res.render("listings/show.ejs", { listing });
 };
 
 module.exports.serveEditForm = async (req, res) => {
@@ -73,7 +76,7 @@ module.exports.serveEditForm = async (req, res) => {
     //COMPRESSING THE IMAGE FOR PREVIEWING USING CLOUDINARY API
     let originalImageUrl = listing.image.url;
     let compressedImageUrl = originalImageUrl.replace("/upload", "/upload/w_300");
-    res.render("Listings/edit.ejs", { listing, compressedImageUrl });
+    res.render("listings/edit.ejs", { listing, compressedImageUrl });
 };
 
 module.exports.saveEditListing = async (req, res, next) => {
@@ -82,6 +85,7 @@ module.exports.saveEditListing = async (req, res, next) => {
     }
     const { id } = req.params;
     const listing = req.body.listing;
+    const existingListing = await Listing.findById(id);
 
     //{new:true} is required so we get back the UPDATED document, not the pre-update one.
     //Previously the pre-update doc was returned, then had .image set + .save() called on it,
@@ -93,6 +97,9 @@ module.exports.saveEditListing = async (req, res, next) => {
     }
 
     if (req.file) {
+        if (existingListing && existingListing.image && existingListing.image.filename) {
+            await cloudinary.uploader.destroy(existingListing.image.filename);
+        }
         updatedListing.image = { url: req.file.path, filename: req.file.filename };
         await updatedListing.save();
     }
@@ -103,6 +110,10 @@ module.exports.saveEditListing = async (req, res, next) => {
 
 module.exports.destroyListing = async (req, res) => {
     const { id } = req.params;
+    const listing = await Listing.findById(id);
+    if (listing && listing.image && listing.image.filename) {
+        await cloudinary.uploader.destroy(listing.image.filename);
+    }
     await Listing.findByIdAndDelete(id);
     req.flash("success", "Listing Deleted");
     res.redirect("/listings");

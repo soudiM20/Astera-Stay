@@ -14,6 +14,12 @@ userRoute.route("/home")
 userRoute.route("/book")
     .get(userController.bookView)
 
+userRoute.route("/privacy")
+    .get(userController.privacyView)
+
+userRoute.route("/terms")
+    .get(userController.termsView)
+
 //SIGN UP ROUTES
 userRoute.route("/signup")
 .get(userController.signupForm)

@@ -8,6 +8,14 @@ module.exports.bookView = (req, res) => {
     res.render("users/book.ejs");
 };
 
+module.exports.privacyView = (req, res) => {
+    res.render("users/privacy.ejs");
+};
+
+module.exports.termsView = (req, res) => {
+    res.render("users/terms.ejs");
+};
+
 module.exports.signupForm= (req,res)=>{
     res.render("users/signup.ejs");
 };
@@ -38,8 +46,8 @@ module.exports.serveLoginForm= (req,res)=>{
 
 module.exports.checkLogin= async(req,res)=>{
     req.flash("success","Welcome Back");
-    // res.redirect("/listings");
     let redirectUrl=res.locals.redirectUrl;
+    delete req.session.redirectUrl;
     res.redirect(redirectUrl);
 };
 

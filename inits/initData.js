@@ -10,6 +10,9 @@ const data = require("./data.js");
 const atlasURL = process.env.ATLAS_URL;
 
 async function main() {
+    if (process.env.NODE_ENV === "production") {
+        throw new Error("The seed script cannot run against a production database.");
+    }
     if (!atlasURL) {
         throw new Error("ATLAS_URL is not set. Add it to your .env file before running the seed script.");
     }
@@ -21,7 +24,10 @@ const insertListings = async () => {
     //adding owner + a placeholder geometry for each listing (the schema requires geometry;
     //the raw seed data in data.js has no coordinates, so inserting it as-is fails validation).
     //Replace OWNER_ID below with a real User _id from your database before seeding.
-    const OWNER_ID = process.env.SEED_OWNER_ID || "65b0b7979a12b3da7c802baf";
+    const OWNER_ID = process.env.SEED_OWNER_ID;
+    if (!OWNER_ID) {
+        throw new Error("SEED_OWNER_ID is required before seeding listings.");
+    }
     const listingsWithMeta = data.listings.map((listing) => ({
         ...listing,
         owner: OWNER_ID,

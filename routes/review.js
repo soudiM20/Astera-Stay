@@ -9,11 +9,7 @@ const reviewController= require("../controller/review.js");
 //save review route
 reviewRoute.post("/",isLoggedIn,validateReview, wrapAsync(reviewController.saveReview));
 
-//delete review route
-//NOTE: previously had no auth middleware at all - any visitor, logged in or not, could delete
-//any review by guessing/finding its id. isLoggedIn is now required; add an isReviewAuthor check
-//(comparing review.author to the current user) if you want to restrict deletion to the review's
-//own author specifically.
+//delete review route; the controller also verifies that the authenticated user owns the review
 reviewRoute.delete("/:reviewId",isLoggedIn,wrapAsync(reviewController.deleteReview));
 
 module.exports=reviewRoute;

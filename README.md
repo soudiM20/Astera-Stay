@@ -60,7 +60,7 @@ Ratings from 1 to 5
 
 Review validation using Joi
 
-Review deletion for authenticated users
+Review deletion for review authors
 
 Reviews are linked to their corresponding listings
 
@@ -544,9 +544,6 @@ Email notifications for account and booking events
 
 Astera Stay is a full-stack web development project demonstrating backend development, database design, authentication, authorization, RESTful routing, cloud storage, third-party API integration, validation, and deployment.
 
-Live Application
-
-https://major-project-4-k0ls.onrender.com
 
 📄 License
 

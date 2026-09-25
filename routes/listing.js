@@ -9,7 +9,7 @@ const listingController=require("../controller/listing.js");
 const multer= require("multer");
 //USING CLOUDINARY STORAGE FOR SAVING FILES
 const {storage}=require("../cloudConfig.js");
-const upload= multer({storage});
+const upload= multer({storage, limits: { fileSize: 5 * 1024 * 1024 }});
 
 //ROUTES
 //index route and create -> add to DB
